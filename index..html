@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>房務房間視覺化指派系統 (智慧樓層集中與平均間數計算版)</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue", Arial, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      background-color: #f0f4f8;
+      color: #2d3748;
+      margin: 0;
+      padding: 20px;
+      user-select: none;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    }
+
+    .header {
+      border-bottom: 3px solid #4a5568;
+      padding-bottom: 20px;
+      margin-bottom: 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 22pt;
+      color: #1a202c;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .meta-group {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .meta-item {
+      font-size: 11pt;
+      color: #4a5568;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .meta-item input,
+    .meta-item select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e0;
+      font-size: 11pt;
+      background-color: white;
+      font-weight: bold;
+    }
+
+    .meta-item input[type="date"] {
+      width: 150px;
+      color: #2b6cb0;
+    }
+
+    .meta-item select {
+      width: 95px;
+      text-align: center;
+      cursor: pointer;
+      color: #2b6cb0;
+    }
+
+    .upload-box {
+      background: #ebf8ff;
+      border: 2px dashed #4299e1;
+      padding: 8px 15px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 10.5pt;
+      font-weight: bold;
+      color: #2b6cb0;
+    }
+
+    .upload-box input[type="file"] {
+      font-size: 10pt;
+      cursor: pointer;
+    }
+
+    .lock-container {
+      display: flex;
+      align-items: center;
+      background: #fff5f5;
+      border: 2px solid #feb2b2;
+      padding: 8px 14px;
+      border-radius: 8px;
+      gap: 6px;
+      font-size: 11pt;
+      font-weight: bold;
+      color: #c53030;
+      cursor: pointer;
+    }
+
+    .lock-container input {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .btn-smart-assign {
+      background-color: #2b6cb0;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 11pt;
+      box-shadow: 0 4px 6px rgba(43, 108, 176, 0.2);
+      transition: all 0.15s;
+    }
+
+    .btn-smart-assign:hover {
+      background-color: #2b5592;
+      transform: scale(1.02);
+    }
+
+    .btn-export-main {
+      background-color: #38a169;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 11pt;
+      box-shadow: 0 4px 6px rgba(56, 161, 105, 0.2);
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-export-main:hover {
+      background-color: #2f855a;
+      transform: scale(1.02);
+    }
+
+    .tool-panel-box {
+      display: flex;
+      background: #edf2f7;
+      padding: 6px;
+      border-radius: 12px;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .tool-title {
+      font-size: 10.5pt;
+      font-weight: bold;
+      color: #4a5568;
+      padding-left: 8px;
+    }
+
+    .tool-btn {
+      border: 2px solid transparent;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 10.5pt;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: white;
+      color: #2d3748;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    .tool-btn.active-checkout { background: #4a5568; color: white; border-color: #4a5568; }
+    .tool-btn.active-rest { background: #319795; color: white; border-color: #319795; }
+    .tool-btn.active-stay { background: #dd6b20; color: white; border-color: #dd6b20; }
+    .tool-btn.active-prein { background: #1a365d; color: white; border-color: #1a365d; }
+    .tool-btn.active-clear { background: #718096; color: white; border-color: #718096; }
+
+    .btn-reset-all {
+      background-color: #e53e3e;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 10.5pt;
+      box-shadow: 0 2px 4px rgba(229, 62, 62, 0.2);
+      transition: all 0.15s;
+      margin-left: auto;
+    }
+
+    .btn-reset-all:hover {
+      background-color: #c53030;
+    }
+
+    .badge {
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 10.5pt;
+      font-weight: bold;
+    }
+
+    .badge-dark { background-color: #4a5568; }
+    .badge-orange { background-color: #dd6b20; }
+    .badge-teal { background-color: #319795; }
+    .badge-navy { background-color: #1a365d; }
+    .badge-blue { background-color: #2b6cb0; }
+    .badge-purple { background-color: #6b46c1; } /* 新增：平均卡片紫色外觀 */
+
+    .kpi-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      padding: 15px;
+      border-radius: 12px;
+      align-items: center;
+    }
+
+    .kpi-card {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: white;
+      padding: 10px 14px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+      border-top: 4px solid #cbd5e0;
+    }
+
+    .kpi-card.main-kpi {
+      border-top-color: #2b6cb0;
+    }
+    
+    .kpi-card.avg-kpi {
+      border-top-color: #6b46c1; /* 平均間數卡片上方紫色邊框 */
+    }
+
+    .kpi-label {
+      font-size: 9.5pt;
+      color: #718096;
+      font-weight: bold;
+    }
+
+    .kpi-value {
+      font-size: 14pt;
+      color: #2d3748;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .assignment-panel {
+      background: #fff;
+      border: 2px solid #2b6cb0;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+    }
+
+    .panel-title {
+      font-size: 11pt;
+      font-weight: bold;
+      color: #4a5568;
+      margin-bottom: 15px;
+    }
+
+    .staff-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .staff-item {
+      display: flex;
+      align-items: center;
+      background: #f7fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 24px;
+      padding: 6px 14px;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .staff-name-input {
+      border: none;
+      background: transparent;
+      font-size: 11pt;
+      font-weight: bold;
+      color: #2d3748;
+      width: 105px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    .staff-name-input:focus {
+      background: #fff;
+      outline: 2px solid #4299e1;
+    }
+
+    .staff-item.active {
+      border-color: #2b6cb0;
+      background-color: white;
+      box-shadow: 0 0 0 4px rgba(66, 153, 225, 0.2);
+    }
+
+    .color-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .room-count {
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 10pt;
+      font-weight: bold;
+      background: #edf2f7;
+      color: #4a5568;
+    }
+
+    .floor-section {
+      margin-bottom: 35px;
+    }
+
+    .floor-title {
+      font-size: 14pt;
+      color: #2b6cb0;
+      background: #ebf8ff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      border-left: 6px solid #2b6cb0;
+    }
+
+    .room-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+      gap: 12px;
+    }
+
+    .room-card {
+      border: 1px solid #cbd5e0;
+      border-radius: 10px;
+      background-color: #ffffff;
+      padding: 16px 5px 8px 5px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 105px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+      touch-action: none;
+    }
+
+    .room-no {
+      font-size: 15pt;
+      font-weight: 800;
+      color: #1a202c;
+      pointer-events: none;
+      margin-top: 4px;
+    }
+
+    .staff-tag {
+      font-size: 9pt;
+      color: #4a5568;
+      font-weight: bold;
+      min-height: 18px;
+      margin-top: 2px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .status-top-bar {
+      position: absolute;
+      top: 4px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 2px;
+      padding: 0 4px;
+      font-size: 7.5pt;
+      font-weight: bold;
+      pointer-events: none;
+    }
+
+    .status-top-bar span {
+      padding: 1px 3px;
+      border-radius: 3px;
+      color: white;
+      display: none;
+    }
+
+    .lbl-checkout { background-color: #4a5568; }
+    .lbl-rest { background-color: #319795; }
+    .lbl-stay { background-color: #dd6b20; }
+    .lbl-prein { background-color: #1a365d; }
+
+    .room-card.need-clean-checkout .lbl-checkout { display: inline-block; }
+    .room-card.need-clean-rest .lbl-rest { display: inline-block; }
+    .room-card.has-stay .lbl-stay { display: inline-block; }
+    .room-card.has-prein .lbl-prein { display: inline-block; }
+
+    .room-card.need-clean-checkout { background-color: #f7fafc; border: 2px solid #4a5568; }
+    .room-card.need-clean-rest { background-color: #e6fffa; border: 2px dashed #319795; }
+    .room-card.has-stay { border: 2px solid #dd6b20; background-color: #fffaf0; }
+    .room-card.has-prein { border: 2px solid #1a365d; background-color: #ebf8ff; }
+    .room-card.has-stay.has-prein { background: linear-gradient(135deg, #fffaf0 50%, #ebf8ff 50%); border: 2px double #1a365d; }
+    .room-card.need-clean-checkout.has-stay { background: linear-gradient(135deg, #f7fafc 50%, #fffaf0 50%); border-color: #dd6b20; }
+    .room-card.need-clean-checkout.has-prein { background: linear-gradient(135deg, #f7fafc 50%, #ebf8ff 50%); border-color: #1a365d; }
+    .room-card.need-clean-checkout.need-clean-rest { background: linear-gradient(135deg, #f7fafc 50%, #e6fffa 50%); border-color: #319795; }
+
+    .room-card.is-repair {
+      background-color: #edd5d5 !important;
+      border: 2px dotted #e53e3e !important;
+      opacity: 0.6;
+    }
+
+    .room-card.is-repair::after {
+      content: "🛠️維修";
+      position: absolute;
+      bottom: 4px;
+      right: 5px;
+      font-size: 8pt;
+      color: #e53e3e;
+      font-weight: bold;
+    }
+
+    /* 🔒 只要房間本身具備待打掃結構房況，右下角就立刻維持出現 🔒 鎖頭保護 */
+    .room-card.checkout-locked::after {
+      content: "🔒";
+      position: absolute;
+      bottom: 4px;
+      right: 5px;
+      font-size: 8.5pt;
+    }
+
+    /* 房務員分配外觀顏色 */
+    .room-card.assigned-user1 { background-image: linear-gradient(rgba(235, 248, 255, 0.85), rgba(235, 248, 255, 0.85)) !important; border-color: #63b3ed !important; }
+    .room-card.assigned-user2 { background-image: linear-gradient(rgba(240, 255, 244, 0.85), rgba(240, 255, 244, 0.85)) !important; border-color: #68d391 !important; }
+    .room-card.assigned-user3 { background-image: linear-gradient(rgba(255, 250, 240, 0.85), rgba(255, 250, 240, 0.85)) !important; border-color: #f6ad55 !important; }
+    .room-card.assigned-user4 { background-image: linear-gradient(rgba(250, 245, 255, 0.85), rgba(250, 245, 255, 0.85)) !important; border-color: #b794f4 !important; }
+    .room-card.assigned-user5 { background-image: linear-gradient(rgba(255, 235, 230, 0.85), rgba(255, 235, 230, 0.85)) !important; border-color: #fc8181 !important; }
+    .room-card.assigned-user6 { background-image: linear-gradient(rgba(230, 255, 250, 0.85), rgba(230, 255, 250, 0.85)) !important; border-color: #4fd1c5 !important; }
+    .room-card.assigned-user7 { background-image: linear-gradient(rgba(254, 243, 199, 0.85), rgba(254, 243, 199, 0.85)) !important; border-color: #f59e0b !important; }
+    .room-card.assigned-user8 { background-image: linear-gradient(rgba(244, 244, 245, 0.85), rgba(244, 244, 245, 0.85)) !important; border-color: #a1a1aa !important; }
+
+    .staff-item.disabled {
+      background: #e2e8f0;
+      opacity: 0.4;
+      border-color: #cbd5e0;
+      cursor: not-allowed;
+    }
+
+    .excel-section {
+      background: #edf2f7;
+      border: 1px solid #cbd5e0;
+      padding: 25px;
+      border-radius: 12px;
+      margin-top: 35px;
+    }
+
+    .excel-title {
+      font-size: 13pt;
+      font-weight: bold;
+      color: #1a202c;
+      margin-bottom: 20px;
+      display: block;
+    }
+
+    .excel-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .excel-box {
+      background: #fff;
+      border: 1px solid #cbd5e0;
+      border-radius: 8px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      font-size: 11pt;
+      border-bottom: 2px solid #edf2f7;
+      padding-bottom: 8px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 4px;
+    }
+
+    .action-btn {
+      border: none;
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-size: 8.5pt;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+    }
+
+    .btn-excel { background-color: #2d3748; }
+    .btn-line { background-color: #38a169; }
+
+    .excel-textarea {
+      width: 100%;
+      height: 160px;
+      font-family: monospace;
+      font-size: 11pt;
+      padding: 8px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background-color: #fafafa;
+      resize: none;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .tips {
+      font-size: 10.5pt;
+      color: #4a5568;
+      margin-top: 20px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #cbd5e0;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>🧹 115年房務每日清潔分配表</h1>
+      <div class="meta-group">
+        <div class="upload-box">
+          📅 匯入今日任意房單/狀況表：
+          <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="importExcel(this)">
+        </div>
+        <div class="meta-item">工作日期：<input type="date" id="workDate"></div>
+        <div class="meta-item">
+          👥 今日打掃人數：
+          <select id="selectStaffCount" onchange="handleStaffCountChange()">
+            <option value="8">8 人</option>
+            <option value="7">7 人</option>
+            <option value="6" selected>6 人</option>
+            <option value="5">5 人</option>
+            <option value="4">4 人</option>
+            <option value="3">3 人</option>
+            <option value="2">2 人</option>
+            <option value="1">1 人</option>
+          </select>
+        </div>
+
+        <label class="lock-container">
+          <input type="checkbox" id="lockRoomStatus" checked>
+          <span>🔒 鎖定原始房況 (防止誤觸住宿)</span>
+        </label>
+
+        <button class="btn-smart-assign" onclick="autoAssign集中樓層()">⚡ 一鍵樓層集中自動分房</button>
+        <button class="btn-export-main" onclick="exportCustomExcel()">🟩 匯出客製排掃總表 (.xlsx)</button>
+
+        <div class="tool-panel-box">
+          <span class="tool-title">🛠️ 手動修改房況畫筆 (需解鎖)：</span>
+          <button class="tool-btn" id="tool-checkout" onclick="selectTool('checkout')">🏨 住宿/退房</button>
+          <button class="tool-btn" id="tool-rest" style="color: #319795;" onclick="selectTool('rest')">🟢 休息</button>
+          <button class="tool-btn" id="tool-stay" style="color: #dd6b20;" onclick="selectTool('stay')">🛌 續住 ☑</button>
+          <button class="tool-btn" id="tool-prein" style="color: #1a365d;" onclick="selectTool('prein')">🌟 預進 *</button>
+          <button class="tool-btn" id="tool-clear" style="color: #718096;" onclick="selectTool('clear')">🧹 擦除房況狀態</button>
+          <button class="btn-reset-all" onclick="resetAllRooms()">🚨 全部重設</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-panel">
+      <div class="kpi-card">
+        <div class="kpi-label">🏨 住宿/待掃房數</div>
+        <div class="kpi-value"><span id="kpiCheckoutCount" class="badge badge-dark">0 間</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">🛌 續住打掃房數</div>
+        <div class="kpi-value"><span id="kpiStayCount" class="badge badge-orange">0 間</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">🟢 休息待打掃數</div>
+        <div class="kpi-value"><span id="kpiRestCount" class="badge badge-teal">0 間</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">🌟 預進特別注意</div>
+        <div class="kpi-value"><span id="kpiPreinCount" class="badge badge-navy">0 間</span></div>
+      </div>
+      <div class="kpi-card main-kpi">
+        <div class="kpi-label">🎯 目前指派總間數</div>
+        <div class="kpi-value"><span id="totalCleanRooms" class="badge badge-blue">0 間</span></div>
+      </div>
+      <div class="kpi-card avg-kpi">
+        <div class="kpi-label">📊 每人預計平均分配</div>
+        <div class="kpi-value"><span id="kpiAvgPerStaff" class="badge badge-purple">0 間 / 人</span></div>
+      </div>
+    </div>
+
+    <div class="assignment-panel" id="staffPanel">
+      <div class="panel-title">🎨 【主管分配】：點選下方名字使其亮起可手動塗抹。或點選上方「⚡ 一鍵樓層集中自動分房」讓系統依 6F➔5F➔3F➔2F➔1F 連續切塊分工！</div>
+      <div class="staff-list">
+        <div class="staff-item" id="item-user1" onclick="selectStaff('user1')">
+          <span class="color-dot" style="background-color: #bee3f8;"></span>
+          <input type="text" class="staff-name-input" id="name-user1" value="鄭美妃" onchange="updateStaffNames()">
+          <span class="room-count" id="count-user1">0 間</span>
+        </div>
+        <div class="staff-item" id="item-user2" onclick="selectStaff('user2')">
+          <span class="color-dot" style="background-color: #c6f6d5;"></span>
+          <input type="text" class="staff-name-input" id="name-user2" value="何秀卿" onchange="updateStaffNames()">
+          <span class="room-count" id="count-user2">0 間</span>
+        </div>
+        <div class="staff-item" id="item-user3" onclick="selectStaff('user3')">
+          <span class="color-dot" style="background-color: #feebc8;"></span>
+          <input type="text" class="staff-name-input" id="name-user3" value="何淑汾" onchange="updateStaffNames()">
+          <span class="room-count" id="count-user3">0 間</span>
+        </div>
+        <div class="staff-item" id="item-user4" onclick="selectStaff('user4')">
+          <span class="color-dot" style="background-color: #e9d8fd;"></span>
+          <input type="text" class="staff-name-input" id="name-user4" value="林容吟" onchange="updateStaffNames()">
+          <span class="room-count" id="count-user4">0 間</span>
+        </div>
+        <div class="staff-item" id="item-user5" onclick="selectStaff('user5')">
+          <span class="color-dot" style="background-color: #fed7d7;"></span>
+          <input type="text" class="staff-name-input" id="name-user5" value="組-陳美樺" onchange="updateStaffNames()">
+          <span class="room-count" id="count-user5">0 間</span>
+        </div>
+        <div class="staff-item" id="item-user6" onclick="selectStaff('user6')">
+          <span class="color-dot" style="background-color: #b2f5ea;"></span>
+          <input type="text" class="staff-name-input" id="name-user6" value="組-簡逸綾" onchange="updateStaffNames()">
+          <span class="room-count" id="count-user6">0 間</span>
+        </div>
+        <div class="staff-item" id="item-user7" onclick="selectStaff('user7')">
+          <span class="color-dot" style="background-color: #fef3c7;"></span>
+          <input type="text" class="staff-name-input" id="name-user7" value="預備員7" onchange="updateStaffNames()">
+          <span class="room-count" id="count-user7">0 間</span>
+        </div>
+        <div class="staff-item" id="item-user8" onclick="selectStaff('user8')">
+          <span class="color-dot" style="background-color: #f4f4f5;"></span>
+          <input type="text" class="staff-name-input" id="name-user8" value="預備員8" onchange="updateStaffNames()">
+          <span class="room-count" id="count-user8">0 間</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="floor-section">
+      <div class="floor-title">🏢 6 樓</div>
+      <div class="room-grid">
+        <div class="room-card" data-room="6088"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6088</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6001"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6001</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6002"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6002</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6003"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6003</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6005"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6005</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6006"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6006</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6007"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6007</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6008"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6008</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6009"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6009</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6010"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6010</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6011"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6011</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6012"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6012</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6013"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6013</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6015"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6015</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6016"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6016</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6017"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6017</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6018"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6018</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6019"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6019</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6020"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6020</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6022"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6022</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="6026"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">6026</div><div class="staff-tag"></div></div>
+      </div>
+    </div>
+
+    <div class="floor-section">
+      <div class="floor-title">🏢 5 樓</div>
+      <div class="room-grid">
+        <div class="room-card" data-room="5001"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5001</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5002"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5002</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5003"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5003</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5005"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5005</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5006"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5006</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5007"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5007</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5008"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5008</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5009"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5009</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5010"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5010</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5011"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5011</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5012"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5012</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5013"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5013</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5015"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5015</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5016"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5016</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5017"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5017</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5018"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5018</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5019"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5019</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5020"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5020</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5021"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5021</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5022"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5022</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="5026"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">5026</div><div class="staff-tag"></div></div>
+      </div>
+    </div>
+
+    <div class="floor-section">
+      <div class="floor-title">🏢 3 樓</div>
+      <div class="room-grid">
+        <div class="room-card" data-room="3001"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3001</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3002"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3002</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3003"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3003</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3005"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3005</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3006"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3006</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3007"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3007</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3008"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3008</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3009"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3009</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3010"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3010</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3011"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3011</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3012"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3012</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3013"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3013</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3015"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3015</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3016"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3016</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3017"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3017</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3018"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3018</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3019"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3019</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3020"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3020</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3021"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3021</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3022"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3022</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="3026"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">3026</div><div class="staff-tag"></div></div>
+      </div>
+    </div>
+
+    <div class="floor-section">
+      <div class="floor-title">🏢 2 樓</div>
+      <div class="room-grid">
+        <div class="room-card" data-room="2001"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2001</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2002"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2002</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2003"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2003</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2005"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2005</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2006"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2006</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2007"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2007</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2008"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2008</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2009"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2009</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2010"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2010</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2011"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2011</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2012"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2012</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2013"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2013</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2015"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2015</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2016"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2016</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2017"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2017</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2018"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2018</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2019"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2019</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2020"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2020</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2022"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2022</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="2088"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">2088</div><div class="staff-tag"></div></div>
+      </div>
+    </div>
+
+    <div class="floor-section">
+      <div class="floor-title">🏢 1 樓</div>
+      <div class="room-grid">
+        <div class="room-card" data-room="1001"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1001</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="1002"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1002</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="1003"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1003</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="1005"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1005</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="1006"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1006</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="1007"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1007</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="1008"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1008</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="1009"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1009</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="1010"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1010</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="1011"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1011</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="1012"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1012</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="1013"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1013</div><div class="staff-tag"></div></div>
+        <div class="room-card" data-room="1016"><div class="status-top-bar"><span class="lbl-checkout">住</span><span class="lbl-rest">休</span><span class="lbl-stay">續</span><span class="lbl-prein">預</span></div><div class="room-no">1016</div><div class="staff-tag"></div></div>
+      </div>
+    </div>
+
+    <div class="excel-section">
+      <span class="excel-title">📊 各人員已選純房號直式清單</span>
+      <div class="excel-grid">
+        <div class="excel-box" id="box-user1">
+          <div class="box-header"><span id="title-user1">👤 鄭美妃</span>
+            <div class="btn-group"><button class="action-btn btn-excel" onclick="copyStaffOutput('user1', 'excel')">📋 Excel</button><button class="action-btn btn-line" onclick="copyStaffOutput('user1', 'line')">💬 LINE</button></div>
+          </div>
+          <textarea class="excel-textarea" id="output-user1" readonly placeholder="暫無房號"></textarea>
+        </div>
+        <div class="excel-box" id="box-user2">
+          <div class="box-header"><span id="title-user2">👤 何秀卿</span>
+            <div class="btn-group"><button class="action-btn btn-excel" onclick="copyStaffOutput('user2', 'excel')">📋 Excel</button><button class="action-btn btn-line" onclick="copyStaffOutput('user2', 'line')">💬 LINE</button></div>
+          </div>
+          <textarea class="excel-textarea" id="output-user2" readonly placeholder="暫無房號"></textarea>
+        </div>
+        <div class="excel-box" id="box-user3">
+          <div class="box-header"><span id="title-user3">👤 何淑汾</span>
+            <div class="btn-group"><button class="action-btn btn-excel" onclick="copyStaffOutput('user3', 'excel')">📋 Excel</button><button class="action-btn btn-line" onclick="copyStaffOutput('user3', 'line')">💬 LINE</button></div>
+          </div>
+          <textarea class="excel-textarea" id="output-user3" readonly placeholder="暫無房號"></textarea>
+        </div>
+        <div class="excel-box" id="box-user4">
+          <div class="box-header"><span id="title-user4">👤 林容吟</span>
+            <div class="btn-group"><button class="action-btn btn-excel" onclick="copyStaffOutput('user4', 'excel')">📋 Excel</button><button class="action-btn btn-line" onclick="copyStaffOutput('user4', 'line')">💬 LINE</button></div>
+          </div>
+          <textarea class="excel-textarea" id="output-user4" readonly placeholder="暫無房號"></textarea>
+        </div>
+        <div class="excel-box" id="box-user5">
+          <div class="box-header"><span id="title-user5">👤 組-陳美樺</span>
+            <div class="btn-group"><button class="action-btn btn-excel" onclick="copyStaffOutput('user5', 'excel')">📋 Excel</button><button class="action-btn btn-line" onclick="copyStaffOutput('user5', 'line')">💬 LINE</button></div>
+          </div>
+          <textarea class="excel-textarea" id="output-user5" readonly placeholder="暫無房號"></textarea>
+        </div>
+        <div class="excel-box" id="box-user6">
+          <div class="box-header"><span id="title-user6">👤 組-簡逸綾</span>
+            <div class="btn-group"><button class="action-btn btn-excel" onclick="copyStaffOutput('user6', 'excel')">📋 Excel</button><button class="action-btn btn-line" onclick="copyStaffOutput('user6', 'line')">💬 LINE</button></div>
+          </div>
+          <textarea class="excel-textarea" id="output-user6" readonly placeholder="暫無房號"></textarea>
+        </div>
+        <div class="excel-box" id="box-user7">
+          <div class="box-header"><span id="title-user7">👤 預備員7</span>
+            <div class="btn-group"><button class="action-btn btn-excel" onclick="copyStaffOutput('user7', 'excel')">📋 Excel</button><button class="action-btn btn-line" onclick="copyStaffOutput('user7', 'line')">💬 LINE</button></div>
+          </div>
+          <textarea class="excel-textarea" id="output-user7" readonly placeholder="暫無房號"></textarea>
+        </div>
+        <div class="excel-box" id="box-user8">
+          <div class="box-header"><span id="title-user8">👤 預備員8</span>
+            <div class="btn-group"><button class="action-btn btn-excel" onclick="copyStaffOutput('user8', 'excel')">📋 Excel</button><button class="action-btn btn-line" onclick="copyStaffOutput('user8', 'line')">💬 LINE</button></div>
+          </div>
+          <textarea class="excel-textarea" id="output-user8" readonly placeholder="暫無房號"></textarea>
+        </div>
+      </div>
+      <div class="tips">
+        💡 <b>【智慧集中自動分房操作說明】：</b><br>
+        1. <b>一鍵集中分房</b>：匯入房單後，點擊上方「⚡ 一鍵樓層集中自動分房」按鈕，系統會將今日所有待掃房間由高到低（6F➔5F➔3F➔2F➔1F）緊密排序列出，並「切塊」完整分給目前啟用的人員，每個人只會分到相同或相連的樓層，絕不亂跳。<br>
+        2. <b>房況結構上鎖</b>：凡是具備待掃房況的房間，右下角一律會立刻呈現 🔒 結構保護鎖。主管指派房務員後，反點可以取消人名顏色，但絕對不會破壞原始房況！
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentTool = 'staff';
+    let currentStaff = 'user1';
+    let isDrawing = false;
+    let drawMode = 'add';
+    
+    const staffConfig = {
+      user1: { name: '鄭美妃', class: 'assigned-user1' },
+      user2: { name: '何秀卿', class: 'assigned-user2' },
+      user3: { name: '何淑汾', class: 'assigned-user3' },
+      user4: { name: '林容吟', class: 'assigned-user4' },
+      user5: { name: '組-陳美樺', class: 'assigned-user5' },
+      user6: { name: '組-簡逸綾', class: 'assigned-user6' },
+      user7: { name: '預備員7', class: 'assigned-user7' },
+      user8: { name: '預備員8', class: 'assigned-user8' }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('workDate').value = today;
+      setupDragEvents();
+      updateStaffNames();
+      handleStaffCountChange();
+      selectStaff('user1');
+    });
+    window.addEventListener('mouseup', () => { isDrawing = false; });
+    window.addEventListener('touchend', () => { isDrawing = false; });
+
+    function updateStaffNames() {
+      for (let i = 1; i <= 8; i++) {
+        const userId = `user${i}`;
+        const newName = document.getElementById(`name-${userId}`).value.trim() || `房務員${i}`;
+        staffConfig[userId].name = newName;
+        document.getElementById(`title-${userId}`).textContent = `👤 ${newName}`;
+      }
+      updateKPI();
+    }
+
+    // 📥 Excel 解析
+    function importExcel(input) {
+      if (!input.files || input.files.length === 0) return;
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        let importCount = 0;
+        const currentWorkDateStr = document.getElementById('workDate').value.replace(/-/g, '/');
+        
+        document.querySelectorAll('.room-card').forEach(card => {
+          card.className = 'room-card';
+          card.querySelector('.staff-tag').textContent = '';
+        });
+
+        jsonData.forEach(row => {
+          const roomNoRaw = row['房號'] || row['房號 '] || '';
+          const excelRoomNo = String(roomNoRaw).trim();
+          const note = String(row['房務註記'] || '').trim();
+          const statusRaw = String(row['房況'] || '').trim();
+          const leaveDateRaw = String(row['預離日期'] || '').trim();
+          if (!excelRoomNo) return;
+          const targetCard = document.querySelector(`.room-card[data-room="${excelRoomNo}"]`);
+          if (targetCard) {
+            if (statusRaw.includes('修繕')) {
+              targetCard.classList.add('is-repair');
+              return;
+            }
+            let needClean = false;
+            let isStay = false;
+            if (statusRaw) {
+              const cleanStatus = statusRaw.replace(/\s/g, '');
+              if (cleanStatus.includes('住宿')) {
+                needClean = true;
+                if (cleanStatus.includes('＊')) isStay = true;
+              } else if (cleanStatus.includes('Ｒ') || cleanStatus.includes('待掃')) {
+                needClean = true;
+              }
+              if (leaveDateRaw && leaveDateRaw > currentWorkDateStr && cleanStatus.includes('住宿')) {
+                isStay = true;
+              }
+            } else {
+              needClean = true;
+              if (note.includes('續')) isStay = true;
+            }
+            if (needClean) {
+              importCount++;
+              card = targetCard;
+              card.classList.add('need-clean-checkout', 'checkout-locked');
+              if (isStay) card.classList.add('has-stay');
+            }
+          }
+        });
+        document.getElementById('lockRoomStatus').checked = true;
+        updateKPI();
+        alert(`🎉 房單識別完成！已精準鎖定 ${importCount} 間待清洗房間。主管可直接微調或使用上方一鍵自動分房！`);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // ⚡ 核心演算法：連續樓層與相鄰房號切塊集中分配法
+    function autoAssign集中樓層() {
+      const 待掃房間陣列 = [];
+      document.querySelectorAll('.room-card').forEach(card => {
+        if (card.classList.contains('is-repair')) return;
+        if (card.classList.contains('need-clean-checkout') || card.classList.contains('need-clean-rest') || card.classList.contains('has-stay') || card.classList.contains('has-prein')) {
+          待掃房間陣列.push(card);
+        }
+      });
+
+      if (待掃房間陣列.length === 0) {
+        alert("⚠️ 畫面上目前沒有任何待清洗的房間，請先匯入 Excel 房單或手動用畫筆標記房況！");
+        return;
+      }
+
+      const 啟用人員數 = parseInt(document.getElementById('selectStaffCount').value);
+      
+      待掃房間陣列.forEach(card => {
+        Object.keys(staffConfig).forEach(key => card.classList.remove(staffConfig[key].class));
+        card.querySelector('.staff-tag').textContent = '';
+      });
+
+      const 總間數 = 待掃房間陣列.length;
+      const 每人基礎間數 = Math.floor(總間數 / 啟用人員數);
+      let 剩餘間數餘數 = 總間數 % 啟用人員數;
+
+      let 房間指引索引 = 0;
+
+      for (let i = 1; i <= 啟用人員數; i++) {
+        const userId = `user${i}`;
+        const 本次打掃總量 = 每人基礎間數 + (剩餘間數餘數 > 0 ? 1 : 0);
+        剩餘間數餘數--;
+
+        for (let j = 0; j < 本次打掃總量; j++) {
+          if (房間指引索引 >= 總間數) break;
+          const card = 待掃房間陣列[房間指引索引];
+          card.classList.add(staffConfig[userId].class);
+          card.querySelector('.staff-tag').textContent = staffConfig[userId].name.substring(0, 4);
+          房間指引索引++;
+        }
+      }
+
+      updateKPI();
+      alert(`⚡ 智慧樓層集中分配完畢！已依 6F➔5F➔3F➔2F➔1F 順序，將今日 ${總間數} 間房連續且完美集中分配給前 ${啟用人員數} 位房務人員！`);
+    }
+
+    function setupDragEvents() {
+      const roomCards = document.querySelectorAll('.room-card');
+      roomCards.forEach(card => {
+        card.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          if (card.classList.contains('is-repair')) return;
+          isDrawing = true;
+          determineDrawMode(card);
+          applyToolToRoom(card);
+        });
+        card.addEventListener('mouseenter', () => {
+          if (isDrawing && !card.classList.contains('is-repair')) applyToolToRoom(card);
+        });
+        card.addEventListener('touchstart', (e) => {
+          if (card.classList.contains('is-repair')) return;
+          isDrawing = true;
+          determineDrawMode(card);
+          applyToolToRoom(card);
+        });
+      });
+      document.addEventListener('touchmove', (e) => {
+        if (!isDrawing) return;
+        const touch = e.touches[0];
+        const element = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (element && element.classList.contains('room-card') && !element.classList.contains('is-repair')) {
+          applyToolToRoom(element);
+        }
+      }, { passive: true });
+    }
+
+    function determineDrawMode(card) {
+      if (currentTool === 'clear') { drawMode = 'remove_all'; return; }
+      if (currentTool === 'staff') {
+        drawMode = card.classList.contains(staffConfig[currentStaff].class) ? 'remove' : 'add';
+        return;
+      }
+      if (currentTool === 'checkout') { drawMode = 'add'; return; }
+      if (currentTool === 'rest') { drawMode = card.classList.contains('need-clean-rest') ? 'remove' : 'add'; }
+      else if (currentTool === 'stay') { drawMode = card.classList.contains('has-stay') ? 'remove' : 'add'; }
+      else if (currentTool === 'prein') { drawMode = card.classList.contains('has-prein') ? 'remove' : 'add'; }
+    }
+
+    function applyToolToRoom(card) {
+      const isLocked = document.getElementById('lockRoomStatus').checked;
+      
+      if (currentTool === 'staff') {
+        if (isLocked) {
+          if (!card.classList.contains('need-clean-checkout') && !card.classList.contains('need-clean-rest') && !card.classList.contains('has-stay') && !card.classList.contains('has-prein')) {
+            return;
+          }
+        }
+        if (drawMode === 'remove') {
+          card.classList.remove(staffConfig[currentStaff].class);
+          card.querySelector('.staff-tag').textContent = '';
+        } else {
+          Object.keys(staffConfig).forEach(key => card.classList.remove(staffConfig[key].class));
+          card.classList.add(staffConfig[currentStaff].class);
+          card.querySelector('.staff-tag').textContent = staffConfig[currentStaff].name.substring(0, 4);
+        }
+        updateKPI();
+        return;
+      }
+
+      if (isLocked) {
+        alert("⚠️ 目前已開啟「鎖定原始房況」！請先取消鎖定勾勾再行修改。");
+        isDrawing = false;
+        return;
+      }
+      if (currentTool === 'clear') {
+        card.className = 'room-card';
+        card.querySelector('.staff-tag').textContent = '';
+        updateKPI();
+        return;
+      }
+      if (currentTool === 'checkout') card.classList.add('need-clean-checkout');
+      else if (currentTool === 'rest') {
+        if (drawMode === 'remove') card.classList.remove('need-clean-rest');
+        else card.classList.add('need-clean-rest');
+      } else if (currentTool === 'stay') {
+        if (drawMode === 'remove') card.classList.remove('has-stay');
+        else card.classList.add('has-stay');
+      } else if (currentTool === 'prein') {
+        if (drawMode === 'remove') card.classList.remove('has-prein');
+        else card.classList.add('has-prein');
+      }
+      
+      if (card.classList.contains('need-clean-checkout') || card.classList.contains('need-clean-rest') || card.classList.contains('has-stay') || card.classList.contains('has-prein')) {
+        card.classList.add('checkout-locked');
+      } else {
+        card.classList.remove('checkout-locked');
+      }
+      
+      updateKPI();
+    }
+
+    function resetAllRooms() {
+      if (confirm('確定要將地圖上所有狀態與指派全部清除嗎？')) {
+        document.querySelectorAll('.room-card').forEach(card => {
+          card.className = 'room-card';
+          card.querySelector('.staff-tag').textContent = '';
+        });
+        document.getElementById('excelFile').value = '';
+        updateKPI();
+      }
+    }
+
+    function handleStaffCountChange() {
+      const count = parseInt(document.getElementById('selectStaffCount').value);
+      for (let i = 1; i <= 8; i++) {
+        const itemEl = document.getElementById(`item-user${i}`);
+        const boxEl = document.getElementById(`box-user${i}`);
+        if (i <= count) {
+          itemEl.classList.remove('disabled');
+          boxEl.style.display = 'flex';
+        } else {
+          itemEl.classList.add('disabled');
+          boxEl.style.display = 'none';
+          if (currentStaff === `user${i}`) selectStaff('user1');
+          clearStaffAssignment(`user${i}`);
+        }
+      }
+      updateKPI();
+    }
+
+    function clearStaffAssignment(userId) {
+      const className = staffConfig[userId].class;
+      document.querySelectorAll(`.room-card.${className}`).forEach(card => {
+        card.classList.remove(className);
+        card.querySelector('.staff-tag').textContent = '';
+      });
+    }
+
+    function selectTool(toolType) {
+      const isLocked = document.getElementById('lockRoomStatus').checked;
+      if (isLocked && toolType !== 'staff') {
+        alert("⚠️ 目前已開啟鎖定原始房況防誤觸！請先解鎖保護。");
+        return;
+      }
+      currentTool = toolType;
+      document.querySelectorAll('.tool-panel-box .tool-btn').forEach(btn => btn.className = 'tool-btn');
+      const activeBtn = document.getElementById(`tool-${toolType}`);
+      if (activeBtn) activeBtn.classList.add(`active-${toolType}`);
+      if (toolType !== 'staff') {
+        document.querySelectorAll('#staffPanel .staff-item').forEach(item => item.classList.remove('active'));
+      } else {
+        selectStaff(currentStaff);
+      }
+    }
+
+    function selectStaff(userId) {
+      if (document.getElementById(`item-${userId}`).classList.contains('disabled')) return;
+      currentStaff = userId;
+      currentTool = 'staff';
+      document.querySelectorAll('.tool-panel-box .tool-btn').forEach(btn => btn.className = 'tool-btn');
+      document.querySelectorAll('#staffPanel .staff-item').forEach(item => item.classList.remove('active'));
+      document.getElementById(`item-${userId}`).classList.add('active');
+    }
+
+    function updateKPI() {
+      const checkoutCount = document.querySelectorAll('.room-card.need-clean-checkout').length;
+      const restCount = document.querySelectorAll('.room-card.need-clean-rest').length;
+      const stayCount = document.querySelectorAll('.room-card.has-stay').length;
+      const preinCount = document.querySelectorAll('.room-card.has-prein').length;
+      
+      // 計算目前畫面上所有的總待打掃間數
+      let 總待打掃房間數 = 0;
+      let assignedTotal = 0;
+      const staffRoomsMap = {
+        user1: [], user2: [], user3: [], user4: [],
+        user5: [], user6: [], user7: [], user8: []
+      };
+      
+      document.querySelectorAll('.room-card').forEach(card => {
+        const roomNo = card.getAttribute('data-room');
+        
+        let hasStatus = false;
+        if (card.classList.contains('need-clean-checkout') || card.classList.contains('need-clean-rest') || card.classList.contains('has-stay') || card.classList.contains('has-prein')) {
+          card.classList.add('checkout-locked');
+          總待打掃房間數++;
+          hasStatus = true;
+        } else {
+          card.classList.remove('checkout-locked');
+        }
+
+        Object.keys(staffConfig).forEach(userId => {
+          if (card.classList.contains(staffConfig[userId].class)) {
+            let roomMark = roomNo;
+            let suffix = [];
+            if (card.classList.contains('need-clean-rest')) suffix.push('休');
+            if (card.classList.contains('has-stay')) suffix.push('☑');
+            if (card.classList.contains('has-prein')) suffix.push('*');
+            if (suffix.length > 0) roomMark += ` ${suffix.join(' ')}`;
+            staffRoomsMap[userId].push(roomMark);
+            assignedTotal++;
+          }
+        });
+      });
+      
+      // 🚀 核心客製化邏輯：計算打掃人數與四捨五入平均間數
+      const 啟用人員數 = parseInt(document.getElementById('selectStaffCount').value) || 1;
+      const 平均間數四捨五入 = Math.round(總待打掃房間數 / 啟用人員數);
+      document.getElementById('kpiAvgPerStaff').textContent = `${平均間數四捨五入} 間 / 人`;
+
+      document.getElementById('kpiCheckoutCount').textContent = `${checkoutCount} 間`;
+      document.getElementById('kpiRestCount').textContent = `${restCount} 間`;
+      document.getElementById('kpiStayCount').textContent = `${stayCount} 間`;
+      document.getElementById('kpiPreinCount').textContent = `${preinCount} 間`;
+      document.getElementById('totalCleanRooms').textContent = `${assignedTotal} 間`;
+      
+      for (let i = 1; i <= 8; i++) {
+        const userId = `user${i}`;
+        const roomsArray = staffRoomsMap[userId];
+        roomsArray.sort((a, b) => parseInt(a) - parseInt(b));
+        if (document.getElementById(`count-${userId}`)) document.getElementById(`count-${userId}`).textContent = `${roomsArray.length} 間`;
+        if (document.getElementById('output-' + userId)) document.getElementById('output-' + userId).value = roomsArray.length > 0 ? roomsArray.join('\n') : '';
+      }
+    }
+
+    function copyStaffOutput(userId, type) {
+      const name = staffConfig[userId].name;
+      const textareaEl = document.getElementById(`output-${userId}`);
+      if (!textareaEl || !textareaEl.value.trim()) {
+        alert(`目前【${name}】沒有房號可複製！`);
+        return;
+      }
+      const roomsList = textareaEl.value.split('\n');
+      const tempTextArea = document.createElement('textarea');
+      if (type === 'excel') {
+        tempTextArea.value = roomsList.join('\n');
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempTextArea);
+        alert(`【${name}】Excel清單複製成功！`);
+      } else if (type === 'line') {
+        tempTextArea.value = `【${name}】今日負責房務 (共 ${roomsList.length} 間)：\n👉 ${roomsList.join(', ')}`;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempTextArea);
+        alert(`【${name}】LINE訊息複製成功！`);
+      }
+    }
+
+    function exportCustomExcel() {
+      const workDate = document.getElementById('workDate').value || new Date().toISOString().split('T')[0];
+      const staffCount = parseInt(document.getElementById('selectStaffCount').value);
+      
+      const exportData = [];
+      exportData.push([`🏨 房務每日清潔指派總表 (${workDate})`]);
+      exportData.push([]); 
+      exportData.push(["房務人員", "指派總間數", "負責房號與詳細狀態清單"]);
+
+      let checkAnyAssigned = false;
+
+      for (let i = 1; i <= staffCount; i++) {
+        const userId = `user${i}`;
+        const name = staffConfig[userId].name;
+        const textareaEl = document.getElementById(`output-${userId}`);
+        
+        let roomsString = "暫無指派房號";
+        let roomCount = 0;
+
+        if (textareaEl && textareaEl.value.trim()) {
+          const list = textareaEl.value.split('\n');
+          roomCount = list.length;
+          roomsString = list.join(', ');
+          checkAnyAssigned = true;
+        }
+
+        exportData.push([name, `${roomCount} 間`, roomsString]);
+      }
+
+      if (!checkAnyAssigned) {
+        if (!confirm("⚠️ 目前畫面上似乎還沒有指派房間給員工，確定要匯出空白表格嗎？")) {
+          return;
+        }
+      }
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(exportData);
+
+      ws['!cols'] = [
+        { wch: 18 }, 
+        { wch: 15 }, 
+        { wch: 85 }  
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, "每日排房總表");
+      
+      const filename = `房務清潔指派總表_${workDate.replace(/-/g, '')}.xlsx`;
+      XLSX.writeFile(wb, filename);
+    }
+  </script>
+</body>
+
+</html>
